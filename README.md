@@ -3,8 +3,8 @@
 Smart contract code for processing repos (repurchase agreements). Basic use:
 
 1. Users deposit some currency token A.
-2. Someone can then sell repo token B for A, with an option to buy back B within some time frame (repoTimeLength) in the code.
-3. If they buy it back, they pay a bit more than they sold it for, which goes as profit for depositors.
+2. Someone can then sell repo token B for A, with an option to buy back B within some time frame (repoTimeLength) in the code. 
+3. If they buy it back, they pay a bit more than they sold it for, which goes as profit for depositors. The sell price is set as repoSellPrice, and the buyPrice is set as repoBuybackPrice.
 4. If they don't buy it back, depositors can claim the currency B sold in the repo.
 
 ## Parameters ##
