@@ -49,7 +49,7 @@ contract BananaRepoProject is Ownable {
 	// THEY WILL NOT BE CONSIDERED TWO DIFFERENT DEPOSITS WITH TWO DIFFERENT PENDING TIMES.
 	// 3. However, every time you deposit, the code will first clear any pending deposits of yours whose activationTime have passed automatically, so rest assured cleared pending deposits will not be reset. 
 	// 4. Whenever a repo is initiated, all pending deposits whose activation time have passed will be cleared.
-	// 5. You can withdraw before activationTime has passed on a pending deposit; the activation time only applies to if the money can be borrowed against.
+	// 5. You can withdraw before activationTime has passed on a pending deposit; the activation time only applies to if the money can be used in repos.
 	// 6. If you have both pending and active balances, and withdraw, the balance will first be taken out of your pending balance - LIFO.
 
 	mapping (address => pendingDeposit) public pendingBalances; // deposits that are not eligible to participate in repo transactions yet. If you deposit again before these activate, your time will restart. 
@@ -61,6 +61,8 @@ contract BananaRepoProject is Ownable {
 	uint256 public repoBuybackPrice;
 	uint256 public repoTimeLength;
 	uint256 public pendingTime; // a pending time can be set to prevent users from only depositing when repos have been bought and not depositing otherwise. Would make sense to be set equal to repoTimeLength
+	uint256 public withdrawActivationTime; // after a default, all individuals must wait defaultWithdrawBuffer time to withdraw. Default set to 0.
+	uint256 public defaultWithdrawBuffer; // buffer to add after a withdraw to guard against any attacks via the default code. Default is set to 0
 	bool public reposPaused; // default set to false;
 	
 	/////////////////////////////////////////////////////////////////////////////
@@ -196,6 +198,8 @@ contract BananaRepoProject is Ownable {
 	/// @param _amount is the amount to withdraw
 	function withdrawFunds(address _token, uint256 _amount) external {
 
+		if (block.timestamp < withdrawActivationTime) revert RepoErrors.CannotWithdrawUntilWithdrawActivationTime();
+
 		if (_token == currencyToken) {
 			
 			uint256 currentBalance = userCurrencyBalances[msg.sender];
@@ -245,6 +249,8 @@ contract BananaRepoProject is Ownable {
 	/// @notice Allows users to withdraw their total owed balance. Note: may fail if some owed balance is currently part of a sold repo
  	/// @dev External function that allows users to withdraw their available balances for currency and repo tokens.
 	function withdrawAll() external {
+
+		if (block.timestamp < withdrawActivationTime) revert RepoErrors.CannotWithdrawUntilWithdrawActivationTime();
 
 		uint256 userClearedBalance = userCurrencyBalances[msg.sender];
 		uint256 userPendingBalance = pendingBalances[msg.sender].amount;
@@ -311,7 +317,7 @@ contract BananaRepoProject is Ownable {
 		
 		repo memory userRepo = activeRepos[msg.sender];
 		if (userRepo.expirationTime == 0) revert RepoErrors.NoActiveRepoForUser();
-		if (block.timestamp > userRepo.expirationTime) revert RepoErrors.RepoExpired();
+		// if (block.timestamp > userRepo.expirationTime) revert RepoErrors.RepoExpired();
 
 		uint256 currencyTokenAmount = userRepo.repoTokenAmount*repoBuybackPrice/PRECISION;
 
@@ -382,6 +388,8 @@ contract BananaRepoProject is Ownable {
 
 			delete activeRepos[_address];
 			_removeReposUsersListUser(_address);
+
+			withdrawActivationTime = block.timestamp + defaultWithdrawBuffer;
 			
 			emit repoDefault(_address, userRepo.repoTokenAmount, lostCurrencyBalance);
 		}
@@ -418,6 +426,17 @@ contract BananaRepoProject is Ownable {
 	function unpauseRepos() external onlyOwner {
 		reposPaused = false;
 	}
+
+	// @notice Allows the owner edit the withdrawActivationTime
+	function editWithdrawActivationTime(uint256 _timestamp) external onlyOwner {
+		withdrawActivationTime = _timestamp;
+	}
+
+	// @notice Allows the owner to edit the default withdraw buffer.
+	function editDefaultWithdrawBuffer(uint256 _seconds) external onlyOwner {
+		defaultWithdrawBuffer = _seconds;
+	}
+
 
 	/////////////////////////////////////////////////////////////////////////////
     //                                  CORE - HELPERS                         //
