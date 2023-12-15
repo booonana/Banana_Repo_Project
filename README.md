@@ -31,6 +31,8 @@ Smart contract code for processing repos (repurchase agreements). Basic use:
 * (uint256) repoBuybackPrice - number of currencyTokens required to buy back 1e18 repoTokens
 * (uint256) repoTimeLength - time in seconds it will take for repo to expire  
 * (uint256) pendingTime - time in seconds it will take for a pending deposit to be eligible to be cleared for repo transactions
+* (uint256) withdrawActivationTime- after a default, all individuals must wait defaultWithdrawBuffer time to withdraw; withdrawActivationTime is thus set to block.timestamp + defaultWithdrawBuffer at the time of a default. Default set to 0.
+* (uint256) defaultWithdrawBuffer-  buffer to add after a withdraw to guard against any attacks via the default code. Default is set to 0
 
 ## Design Considerations ## 
 
@@ -42,3 +44,4 @@ Smart contract code for processing repos (repurchase agreements). Basic use:
 * You can withdraw before activationTime has passed on a pending deposit; the activation time only applies to if the money can be used in repos.
 * If you have both pending and active balances, and withdraw, the balance will first be taken out of your pending balance - LIFO.
 * Any time profits from a repo sell and buyback or a repo default are split, they are split proportionately across all cleared balances. All profits are rounded down in division by default in Solidity. Any excess will be considered protocol profits.
+* repoTimeLength is the amount of time in which a repo is safe from defaults (the repo seller is guaranteed to be able to buy back). Once repoTimeLength passes, anyone may call defaultRepo, to default the repo, thus preventing the seller from buying back. An important nuance here is after the repo expires (after repoTimeLength from the time the repo was bought), the repo can STILL BE BOUGHT BACK, so long as no one has called defaultRepo yet. Effectively the limit order that is filled with buybackRepo can only be pulled after repoTimeLength, but is not automatically pulled.
