@@ -34,4 +34,5 @@ library RepoErrors {
     // if you receive this error, this likely means the contract has enough currencyToken to pay you out, but some of that belongs to pending balances which do not belong to you. Your funds are locked in a repo at the moment, while the 
     // pending funds belonging to someone else are not
     error WithdrawingMoreThanEligible(); 
+    error CannotWithdrawUntilWithdrawActivationTime();
 }
